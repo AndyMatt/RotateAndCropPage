@@ -69,14 +69,20 @@ def ProcessFile(input, output):
 
 	##Export Result
 	cv2.imwrite(output,ROI)
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
+def main():
+    if(len(sys.argv) < 3):
+        print("Usage: Rotate.py Filename Output")
+        exit(0)
+    if(sys.argv[1] == "-l") :
+        for i in sys.argv[2:]:
+            output = os.path.splitext(i)[0] + "c.png"
+            ProcessFile(i,output)
+    else:
+        output = os.path.splitext(sys.argv[1])[0] + "c.png"
+        ProcessFile(sys.argv[1], output)
 
-if(len(sys.argv) < 3):
-	print("Usage: Rotate.py Filename Output")
-	exit(0)
-if(sys.argv[1] == "-l") :
-	for i in sys.argv[2:]:
-		output = os.path.splitext(i)[0] + "c.png"
-		ProcessFile(i,output)
-else:
-	output = os.path.splitext(sys.argv[1])[0] + "c.png"
-	ProcessFile(sys.argv[1], output)
+if __name__ == '__main__':
+    main()
