@@ -27,6 +27,33 @@ Usage:
     Rotate.py file1.jpg [file2.jpg ...] --outdir [path]
     Rotate.py -d [InputDirectory]
     Rotate.py file1.jpg --threshhold_thresh 130 --threshhold_type 0""")
+    
+def RotateImage(img, angle):
+	(h,w) = img.shape[:2]
+	(cX, cY) = (w // 2, h // 2)
+
+	M = cv2.getRotationMatrix2D((cX, cY), angle, 1.0)
+	
+	cos = np.abs(M[0, 0])
+	sin = np.abs(M[0, 1])
+	width = int((h * sin) + (w * cos))
+	height = int((h * cos) + (w * sin))
+
+	#Recalculate Matrix
+	M[0, 2] += (width / 2) - cX
+	M[1, 2] += (height / 2) - cY
+
+	result = cv2.warpAffine(img, M, (width, height), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_CONSTANT)
+	return result
+	
+def GetRectIndecies(x,y,w,h,img):
+	(source_height, source_width) = img.shape[:2]
+	x0 = max(y-10,0)
+	x1 = min(y+h+20,source_height)
+	y0 = max(x-10,0)
+	y1 = min(x+w+20,source_width)
+	
+	return x0, x1, y0, y1
 
 def ProcessFile(input):
 	##Read file as input
@@ -70,13 +97,9 @@ def ProcessFile(input):
 	##Calculate angle of bounding box for rotation
 	_, _, angle = rect = cv2.minAreaRect(cnt)
 	if(angle > 45): angle -= 90
-	(h,w) = img.shape[:2]
-	(center) = (h//2,h//2)
 
-	##Process the Rotation
-	M = cv2.getRotationMatrix2D(center, angle, 1.0)
-	rotated = cv2.warpAffine(img, M, (int(w),int(h)), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_CONSTANT)
-
+	rotated = RotateImage(img, angle)
+	
 	##Process rotate image
 	imgray = cv2.cvtColor(rotated, cv2.COLOR_BGR2GRAY)
 
@@ -92,7 +115,8 @@ def ProcessFile(input):
 	# Determine the Bounding box using the contours
 	for c in cnts:
 		x,y,w,h = cv2.boundingRect(c)
-		ROI = rotated[y-10:y+h+20, x-10:x+w+20]
+		x0, x1, y0, y1 = GetRectIndecies(x,y,w,h,rotated)
+		ROI = rotated[x0:x1, y0:y1]
 		break
 
 	#return result
