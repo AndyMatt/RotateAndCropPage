@@ -104,7 +104,7 @@ def ProcessFile(input):
 	imgray = cv2.cvtColor(rotated, cv2.COLOR_BGR2GRAY)
 
 	##Change the Level Threshold Again
-	th, threshed = cv2.threshold(imgray, 150, 200, 0)
+	th, threshed = cv2.threshold(imgray, 150, 255, 0)
 	cnts = cv2.findContours(threshed, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[-2]
 	
 	##Find the Contours of the bounding box
