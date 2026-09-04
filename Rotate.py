@@ -2,13 +2,41 @@
 
 import sys
 import os
+import argparse
 import cv2
 import numpy as np
 
-def ProcessFile(input, output):
+def PrintError():
+    print("""No input files found. 
+        
+Arguments:
+    [file|files]        - Name of file/files to process
+    --threshhold_thresh - 0-255, Value for threshold strength.
+    --threshhold1_type  - Type of Threshold Method 
+        0: THRESH_BINARY        - Preferable for Black Backgrounds
+        1: THRESH_BINARY_INV    - Preferable for White Backgrounds
+        2: THRESH_TRUNC
+        3: THRESH_TOZERO
+        4: THRESH_TOZERO_INV
+    --blur              - 0-255,  Blur Kernal Size, useful for removing noise
+    --pad               - size in px, border around final cropped image
+    --outdir            - Specify Output Directory relative to path. '.' is supported.
+            
+Usage: 
+    Rotate.py file1.jpg [file2.jpg ...]
+    Rotate.py file1.jpg [file2.jpg ...] --outdir [path]
+    Rotate.py -d [InputDirectory]
+    Rotate.py file1.jpg --threshhold_thresh 130 --threshhold_type 0""")
+
+def ProcessFile(input):
 	##Read file as input
 	img = cv2.imread(input)
-
+    if img is None:
+		print(f"Skipping {f}: could not read image")
+		return None
+		
+	print(f"Processing {input}")
+	
 	##Blur source image to remove artifacts
 	blurred = cv2.blur(img, (20,20))
 
@@ -67,22 +95,58 @@ def ProcessFile(input, output):
 		ROI = rotated[y-10:y+h+20, x-10:x+w+20]
 		break
 
-	##Export Result
-	cv2.imwrite(output,ROI)
+	#return result
+	return ROI
+    
+# ---------------------------------------------------------------------------
+# File System
+# ---------------------------------------------------------------------------
+def build_parser():
+    p = argparse.ArgumentParser(description="Auto-rotate and crop trading card photos (white background).")
+    p.add_argument('paths', nargs='*',
+                    help='Image file(s), or a directory when -d is used ("." for cwd)')
+    p.add_argument('--threshhold_thresh', type=int, default=120,
+                    help='Threshold value - card/angle detection (default: 120)')
+    p.add_argument('--threshhold1_type', type=int, default=0,
+                    help='Threshold type, cv2.threshold type constant (default: 0)')
+    p.add_argument('--blur', type=int, default=5, help='Blur kernel size (default: 5)')
+    p.add_argument('--pad', type=int, default=10, help='Padding in px around the detected card (default: 10)')
+    p.add_argument('--outdir', '--outdir', default=None,
+                    help='Output directory (default: overwrite alongside each input as .png)')
+    return p
+    
+def output_path_for(input_path, outdir):
+    base = os.path.splitext(os.path.basename(input_path))[0] + '.png'
+    directory = outdir if outdir else (os.path.dirname(input_path) or '.')
+    return os.path.join(directory, base)
+    
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
+    
 def main():
-    if(len(sys.argv) < 3):
-        print("Usage: Rotate.py Filename Output")
-        exit(0)
-    if(sys.argv[1] == "-l") :
-        for i in sys.argv[2:]:
-            output = os.path.splitext(i)[0] + "c.png"
-            ProcessFile(i,output)
-    else:
-        output = os.path.splitext(sys.argv[1])[0] + "c.png"
-        ProcessFile(sys.argv[1], output)
-
+    args = build_parser().parse_args()
+    files = args.paths
+    
+    if not files:
+        PrintError()
+        sys.exit(1)
+    
+    if args.outdir:
+        os.makedirs(args.outdir, exist_ok=True)
+        
+    try:
+        for f in files:
+            img = ProcessFile(f)
+            if img is None:
+                print(f"Failed to detect card bounds in {f}, skipping.")
+                continue
+				
+            out = output_path_for(f, args.outdir)
+            cv2.imwrite(out, img)
+        print(f"Saved {out}")
+    finally:
+        print("Complete")
+		
 if __name__ == '__main__':
     main()
